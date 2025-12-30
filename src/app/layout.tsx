@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
@@ -25,11 +26,12 @@ export default function RootLayout({
       <body className={inter.variable}>
         <ErrorBoundary>
           <QueryProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <AuthProvider>
                 <ToastProvider />
                 <Header />
                 <main>{children}</main>
+                <Footer />
               </AuthProvider>
             </ThemeProvider>
           </QueryProvider>
