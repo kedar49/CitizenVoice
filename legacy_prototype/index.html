@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parliamentary Crowdsourcing Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .merged-badge { background: #fee2e2; color: #991b1b; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-800 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-[1600px] mx-auto bg-white shadow-xl rounded-xl overflow-hidden min-h-[90vh] flex flex-col">
+        
+        <header class="flex flex-col md:flex-row items-center justify-between px-8 py-5 border-b border-gray-200 bg-white relative z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">MP</div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-gray-900 leading-tight">Parliamentary Connect</span>
+                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Direct Democracy Portal</span>
+                </div>
+            </div>
+
+            <div class="flex bg-gray-100 p-1 rounded-lg my-4 md:my-0">
+                <button onclick="switchView('voter')" id="btn-voter" class="px-4 py-2 rounded-md text-sm font-bold transition bg-white shadow-sm text-orange-600">Citizen View</button>
+                <button onclick="switchView('mp')" id="btn-mp" class="px-4 py-2 rounded-md text-sm font-bold transition text-gray-500">MP / Staff View</button>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="relative hidden md:block">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                    <input type="text" placeholder="Search questions..." class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm w-64 focus:ring-2 focus:ring-orange-200 outline-none">
+                </div>
+                <button class="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg"><i data-lucide="user" class="w-5 h-5"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto">
+            
+            <section id="voter-view" class="space-y-8">
+                <div class="bg-orange-50 border border-orange-200 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Have a question for Parliament?</h2>
+                        <p class="text-gray-600">Submit your concern and let the community prioritize it.</p>
+                    </div>
+                    <button onclick="toggleSubmitForm()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold shadow-md transition">Submit New Question</button>
+                </div>
+
+                <div id="submit-form" class="hidden bg-white border border-gray-200 p-6 rounded-xl shadow-inner space-y-4">
+                    <h3 class="font-bold text-lg">New Submission</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input id="q-title" type="text" placeholder="Question Title" class="p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-orange-400">
+                        <select id="q-category" class="p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none">
+                            <option>Infrastructure</option>
+                            <option>Healthcare</option>
+                            <option>Education</option>
+                            <option>Economy</option>
+                        </select>
+                    </div>
+                    <textarea id="q-desc" placeholder="Details and context..." class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg h-24 outline-none focus:border-orange-400"></textarea>
+                    <button onclick="addQuestion()" class="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold">Post Question</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="voter-questions-grid">
+                    </div>
+            </section>
+
+            <section id="mp-view" class="hidden space-y-8">
+                <div class="flex justify-between items-end">
+                    <h2 class="text-2xl font-bold border-l-4 border-orange-500 pl-4">Management Dashboard</h2>
+                    <div class="flex gap-2">
+                        <button onclick="mergeSelected()" class="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-bold border border-orange-200 hover:bg-orange-200 transition">Merge Selected</button>
+                        <button class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold">Export for Session</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
+                            <tr>
+                                <th class="p-4 w-10">Select</th>
+                                <th class="p-4">Question Details</th>
+                                <th class="p-4">Category</th>
+                                <th class="p-4">Priority Score</th>
+                                <th class="p-4">Votes</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mp-questions-table" class="divide-y divide-gray-100">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Data State
+        let questions = [
+            { id: 1, title: "Lack of rural high-speed broadband", category: "Infrastructure", desc: "Many villages in the north district still rely on dial-up speeds.", votes: 1240, status: "Trending" },
+            { id: 2, title: "Hospital wait times exceeding 12 hours", category: "Healthcare", desc: "Emergency rooms in the capital are overwhelmed.", votes: 850, status: "Under Review" },
+            { id: 3, title: "Small business tax relief post-pandemic", category: "Economy", desc: "Incentives needed for local shops to survive inflation.", votes: 420, status: "New" }
+        ];
+
+        // Core Functions
+        function switchView(view) {
+            const voterSect = document.getElementById('voter-view');
+            const mpSect = document.getElementById('mp-view');
+            const btnVoter = document.getElementById('btn-voter');
+            const btnMp = document.getElementById('btn-mp');
+
+            if (view === 'voter') {
+                voterSect.classList.remove('hidden');
+                mpSect.classList.add('hidden');
+                btnVoter.className = "px-4 py-2 rounded-md text-sm font-bold transition bg-white shadow-sm text-orange-600";
+                btnMp.className = "px-4 py-2 rounded-md text-sm font-bold transition text-gray-500";
+                renderVoter();
+            } else {
+                voterSect.classList.add('hidden');
+                mpSect.classList.remove('hidden');
+                btnMp.className = "px-4 py-2 rounded-md text-sm font-bold transition bg-white shadow-sm text-orange-600";
+                btnVoter.className = "px-4 py-2 rounded-md text-sm font-bold transition text-gray-500";
+                renderMP();
+            }
+        }
+
+        function toggleSubmitForm() {
+            document.getElementById('submit-form').classList.toggle('hidden');
+        }
+
+        function addQuestion() {
+            const title = document.getElementById('q-title').value;
+            const cat = document.getElementById('q-category').value;
+            const desc = document.getElementById('q-desc').value;
+
+            if(!title) return alert("Title is required");
+
+            questions.unshift({
+                id: Date.now(),
+                title: title,
+                category: cat,
+                desc: desc,
+                votes: 1,
+                status: "New"
+            });
+            
+            toggleSubmitForm();
+            renderVoter();
+            document.getElementById('q-title').value = "";
+            document.getElementById('q-desc').value = "";
+        }
+
+        function upvote(id) {
+            const q = questions.find(q => q.id === id);
+            if(q) q.votes++;
+            renderVoter();
+        }
+
+        function mergeSelected() {
+            const selectedIds = Array.from(document.querySelectorAll('.mp-checkbox:checked')).map(cb => parseInt(cb.value));
+            if(selectedIds.length < 2) return alert("Select at least 2 questions to merge");
+
+            const itemsToMerge = questions.filter(q => selectedIds.includes(q.id));
+            const totalVotes = itemsToMerge.reduce((sum, item) => sum + item.votes, 0);
+            const master = itemsToMerge[0]; // Take the first as the master
+
+            // Update Master
+            master.votes = totalVotes;
+            master.status = "Merged/Consolidated";
+            master.title = "[Consolidated] " + master.title;
+
+            // Remove others
+            const idsToRemove = selectedIds.slice(1);
+            questions = questions.filter(q => !idsToRemove.includes(q.id));
+
+            renderMP();
+            alert(`Merged ${selectedIds.length} concerns into a single priority item with ${totalVotes} total votes.`);
+        }
+
+        // Render Functions
+        function renderVoter() {
+            const grid = document.getElementById('voter-questions-grid');
+            grid.innerHTML = questions.map(q => `
+                <div class="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-[10px] uppercase font-bold tracking-widest text-orange-500">${q.category}</span>
+                        <span class="text-xs text-gray-400">${q.status}</span>
+                    </div>
+                    <h4 class="font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition">${q.title}</h4>
+                    <p class="text-sm text-gray-500 mb-4 line-clamp-2">${q.desc}</p>
+                    <div class="flex items-center justify-between border-t pt-4">
+                        <div class="flex items-center gap-2">
+                            <button onclick="upvote(${q.id})" class="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition">
+                                <i data-lucide="arrow-big-up" class="w-5 h-5"></i>
+                            </button>
+                            <span class="font-bold text-gray-700">${q.votes.toLocaleString()}</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-gray-600"><i data-lucide="share-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderMP() {
+            const table = document.getElementById('mp-questions-table');
+            table.innerHTML = questions.map(q => {
+                const priorityScore = (q.votes / 10).toFixed(0); // Simple algorithm simulation
+                return `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-4"><input type="checkbox" value="${q.id}" class="mp-checkbox w-4 h-4 accent-orange-500"></td>
+                        <td class="p-4">
+                            <div class="font-bold text-gray-900">${q.title}</div>
+                            <div class="text-xs text-gray-400 line-clamp-1">${q.desc}</div>
+                        </td>
+                        <td class="p-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs">${q.category}</span></td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-16 bg-gray-200 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-orange-500 h-full" style="width: ${Math.min(priorityScore, 100)}%"></div>
+                                </div>
+                                <span class="text-xs font-bold">${priorityScore}</span>
+                            </div>
+                        </td>
+                        <td class="p-4 font-bold text-gray-700">${q.votes}</td>
+                        <td class="p-4 text-xs font-semibold text-orange-600">${q.status}</td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // Init
+        window.onload = () => {
+            renderVoter();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
