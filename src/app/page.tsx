@@ -72,7 +72,7 @@ export default function Home() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(q => 
         q.title.toLowerCase().includes(query) ||
-        q.description.toLowerCase().includes(query)
+        (q.description?.toLowerCase().includes(query) ?? false)
       );
     }
 
