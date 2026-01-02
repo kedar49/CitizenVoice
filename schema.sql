@@ -109,27 +109,27 @@ CREATE POLICY "Users can view all profiles"
 
 CREATE POLICY "Users can insert own profile"
     ON users FOR INSERT
-    WITH CHECK (auth.uid() = id);
+    WITH CHECK ((SELECT auth.uid()) = id);
 
 CREATE POLICY "Users can update own profile"
     ON users FOR UPDATE
-    USING (auth.uid() = id);
+    USING ((SELECT auth.uid()) = id);
 
 -- Role Requests policies
 CREATE POLICY "Users can view own role requests"
     ON role_requests FOR SELECT
-    USING (auth.uid() = user_id OR EXISTS (
-        SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin'
+    USING ((SELECT auth.uid()) = user_id OR EXISTS (
+        SELECT 1 FROM users WHERE users.id = (SELECT auth.uid()) AND users.role = 'admin'
     ));
 
 CREATE POLICY "Users can create role requests"
     ON role_requests FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Admins can update role requests"
     ON role_requests FOR UPDATE
     USING (EXISTS (
-        SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin'
+        SELECT 1 FROM users WHERE users.id = (SELECT auth.uid()) AND users.role = 'admin'
     ));
 
 -- Questions policies
@@ -139,25 +139,23 @@ CREATE POLICY "Anyone can view questions"
 
 CREATE POLICY "Authenticated users can create questions"
     ON questions FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((SELECT auth.uid()) = user_id);
 
-CREATE POLICY "Users can update own questions"
-    ON questions FOR UPDATE
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "MP staff can update any question"
+-- Consolidated UPDATE policy to avoid multiple permissive policies
+CREATE POLICY "Users and MP staff can update questions"
     ON questions FOR UPDATE
     USING (
-        EXISTS (
+        (SELECT auth.uid()) = user_id
+        OR EXISTS (
             SELECT 1 FROM users
-            WHERE users.id = auth.uid()
+            WHERE users.id = (SELECT auth.uid())
             AND users.role IN ('mp_staff', 'admin')
         )
     );
 
 CREATE POLICY "Users can delete own questions"
     ON questions FOR DELETE
-    USING (auth.uid() = user_id);
+    USING ((SELECT auth.uid()) = user_id);
 
 -- Votes policies
 CREATE POLICY "Anyone can view votes"
@@ -166,20 +164,20 @@ CREATE POLICY "Anyone can view votes"
 
 CREATE POLICY "Authenticated users can vote"
     ON votes FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete own votes"
     ON votes FOR DELETE
-    USING (auth.uid() = user_id);
+    USING ((SELECT auth.uid()) = user_id);
 
 -- Notifications policies
 CREATE POLICY "Users can view own notifications"
     ON notifications FOR SELECT
-    USING (auth.uid() = user_id);
+    USING ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can update own notifications"
     ON notifications FOR UPDATE
-    USING (auth.uid() = user_id);
+    USING ((SELECT auth.uid()) = user_id);
 
 -- Categories policies
 CREATE POLICY "Anyone can view categories"

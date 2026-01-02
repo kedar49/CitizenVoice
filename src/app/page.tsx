@@ -30,9 +30,14 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<SortOption>('priority');
 
   const handleNewQuestion = async (data: any) => {
-    if (isSubmitting) return;
+    if (isSubmitting) {
+      console.log('Already submitting, ignoring duplicate request');
+      return;
+    }
     
+    console.log('Starting question submission...', data);
     setIsSubmitting(true);
+    
     try {
       // Sanitize inputs before submitting
       const sanitizedData = {
@@ -41,17 +46,21 @@ export default function Home() {
         category_id: parseInt(data.category) || 1,
       };
       
+      console.log('Sanitized data:', sanitizedData);
       await submitQuestion(sanitizedData);
+      
+      console.log('Question submitted successfully');
       setDialogOpen(false);
       toast.success('Question submitted successfully! 🎉', {
         description: 'Your question is now live and ready for votes.',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting question:', error);
       toast.error('Failed to submit question', {
-        description: 'Please try again or contact support if the problem persists.',
+        description: error?.message || 'Please try again or contact support if the problem persists.',
       });
     } finally {
+      console.log('Resetting isSubmitting to false');
       setIsSubmitting(false);
     }
   };

@@ -60,23 +60,72 @@ export function useQuestions() {
     description: string;
     category_id: number;
   }) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    console.log('[useQuestions] Starting submitQuestion...', { questionData });
+    
+    try {
+      // Check authentication with timeout
+      const authPromise = supabase.auth.getUser();
+      const { data: { user } } = await Promise.race([
+        authPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Authentication check timed out after 10 seconds')), 10000)
+        )
+      ]) as Awaited<typeof authPromise>;
 
-    const { data, error } = await supabase
-      .from('questions')
-      .insert([
-        {
-          ...questionData,
-          user_id: user.id,
-          status: 'open',
-        },
-      ])
-      .select()
-      .single();
+      if (!user) {
+        console.error('[useQuestions] User not authenticated');
+        throw new Error('You must be logged in to submit a question');
+      }
 
-    if (error) throw error;
-    return data;
+      console.log('[useQuestions] User authenticated:', user.id);
+
+      // Insert question with timeout
+      const insertPromise = supabase
+        .from('questions')
+        .insert([
+          {
+            ...questionData,
+            user_id: user.id,
+            status: 'open',
+          },
+        ])
+        .select()
+        .single();
+
+      const { data, error } = await Promise.race([
+        insertPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Question submission timed out after 15 seconds. Please check your internet connection and try again.')), 15000)
+        )
+      ]) as Awaited<typeof insertPromise>;
+
+      if (error) {
+        console.error('[useQuestions] Supabase error:', error);
+        
+        // Provide more helpful error messages
+        if (error.code === '23505') {
+          throw new Error('This question has already been submitted');
+        } else if (error.code === '42501') {
+          throw new Error('Permission denied. Please check your account permissions.');
+        } else if (error.message.includes('network')) {
+          throw new Error('Network error. Please check your internet connection.');
+        }
+        
+        throw new Error(error.message || 'Failed to submit question');
+      }
+
+      console.log('[useQuestions] Question submitted successfully:', data);
+      return data;
+    } catch (error: any) {
+      console.error('[useQuestions] submitQuestion failed:', error);
+      
+      // Re-throw with more context
+      if (error.message) {
+        throw error;
+      } else {
+        throw new Error('An unexpected error occurred while submitting your question');
+      }
+    }
   };
 
   const toggleVote = async (questionId: number) => {
